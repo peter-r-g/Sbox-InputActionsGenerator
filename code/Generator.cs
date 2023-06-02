@@ -152,12 +152,16 @@ internal static class Generator
 		if ( !project.Config.TryGetMeta<CompilerSettings>( "Compiler", out var compilerSettings ) && compilerSettings is not null )
 			rootNamespace = compilerSettings.RootNamespace;
 
-		var outputPath = Path.Combine( project.GetCodePath(), "InputActions.cs" );
+		var outputDirectory = Path.Combine( project.GetCodePath(), "Generated" );
+		var outputPath = Path.Combine( outputDirectory, "InputActions.generated.cs" );
 		Progress.Update( $"Opening ${outputPath} for writing...", 50, 100 );
 
 		Stream stream;
 		try
 		{
+			if ( !Directory.Exists( outputDirectory ) )
+				Directory.CreateDirectory( outputDirectory );
+
 			stream = File.Open( outputPath, FileMode.Create );
 		}
 		catch ( Exception e )
