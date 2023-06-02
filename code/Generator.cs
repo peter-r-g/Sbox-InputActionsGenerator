@@ -2,8 +2,10 @@
 using Sandbox;
 using System;
 using System.CodeDom.Compiler;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -28,23 +30,73 @@ internal static class Generator
 			}
 
 			return jsonOptions;
-
 		}
 	}
 	private static JsonSerializerOptions? jsonOptions;
 
-	/// <summary>
-	/// Adds the "Generate Input Action File" option to the project context menu.
-	/// </summary>
-	/// <param name="menuContext">The context surrounding the projects new context menu.</param>
-	[Event( "projectrow.contextmenu" )]
-	private static void OnProjectContextMenu( ProjectRowContextMenu menuContext )
-	{
-		if ( menuContext.Project.Package.PackageType != Package.Type.Gamemode )
-			return;
+	private static ConcurrentQueue<LocalProject> NeedGenerating { get; } = new();
 
-		menuContext.Menu.AddSeparator();
-		menuContext.Menu.AddOption( "Generate Input Action File", MaterialIcon.Abc, () => GenerateFor( menuContext.Project ) );
+	private static Dictionary<LocalProject, FileSystemWatcher> Watchers { get; } = new();
+
+	/// <summary>
+	/// Checks all projects that need generating or are missing their file system watchers.
+	/// </summary>
+	[EditorEvent.Frame]
+	private static void MonitorProjects()
+	{
+		foreach ( var project in Utility.Projects.GetAll() )
+		{
+			if ( project.Package.PackageType != Package.Type.Gamemode )
+				continue;
+
+			// In the event the root path changes but the project stays around. Update the path.
+			if ( Watchers.TryGetValue( project, out var foundWatcher ) )
+			{
+				if ( foundWatcher.Path != project.GetRootPath() )
+					foundWatcher.Path = project.GetRootPath();
+
+				continue;
+			}
+
+			void AddonFileChanged( object sender, FileSystemEventArgs e )
+			{
+				// Queue instead of generating because of S&box thread safety checks.
+				NeedGenerating.Enqueue( project );
+			}
+
+			var watcher = new FileSystemWatcher( project.GetRootPath(), ".addon" )
+			{
+				EnableRaisingEvents = true,
+				NotifyFilter = NotifyFilters.LastWrite
+			};
+			watcher.Changed += AddonFileChanged;
+			Watchers.Add( project, watcher );
+		}
+
+		// Generate code for any projects that are requesting it.
+		while ( NeedGenerating.TryDequeue( out var project ) )
+			GenerateFor( project );
+	}
+
+	/// <summary>
+	/// Removes any file system watchers that are no longer valid.
+	/// </summary>
+	[Event( "localaddons.changed" )]
+	private static void CleanWatchers()
+	{
+		var stillExists = new List<LocalProject>();
+		foreach ( var project in Utility.Projects.GetAll() )
+			stillExists.Add( project );
+
+		var projectsToRemove = new Stack<LocalProject>();
+		foreach ( var (project, watcher) in Watchers.Where( pair => !stillExists.Contains( pair.Key ) ) )
+			projectsToRemove.Push( project );
+
+		while ( projectsToRemove.TryPop( out var project ) )
+		{
+			Watchers[project].Dispose();
+			Watchers.Remove( project );
+		}	
 	}
 
 	/// <summary>
@@ -181,9 +233,8 @@ internal static class Generator
 		writer.Indent--;
 		writer.WriteLine( '}' );
 
-		// Cleanup and open the file in explorer for the user.
+		// Cleanup.
 		writer.Close();
-		Utility.OpenFileFolder( outputPath );
 	}
 }
 
