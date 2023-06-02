@@ -213,7 +213,14 @@ internal static class Generator
 		// Generate each action data.
 		foreach ( var action in actions )
 		{
-			await writer.WriteAsync( $"public static InputActionData {action.Name} {{ get; }} = new" );
+			var propertyName = action.Name;
+			if ( propertyName.Length == 0 )
+				continue;
+
+			if ( char.IsDigit( propertyName[0] ) )
+				propertyName = '_' + propertyName;
+
+			await writer.WriteAsync( $"public static InputActionData {propertyName} {{ get; }} = new" );
 			await writer.WriteLineAsync( $"( \"{action.Name}\", \"{action.GroupName}\", \"{action.KeyboardCode}\", {nameof( Gamepad )}.{nameof( Gamepad.Code )}.{action.GamepadCode} );" );
 		}
 
