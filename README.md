@@ -8,7 +8,7 @@ This tool takes a gamemode package and reads its input settings. From that it co
 * KeyboardCode - The keyboard code you gave the input as a `string`.
 * GamepadCode - The gamepad code you gave the input as a `Gamepad.Code`.
 
-This data is implicited converted to its name so that it can be used seamlessly with the [Input](https://asset.party/api/Sandbox.Input) API.
+This data is implicitly converted to its name so that it can be used seamlessly with the [Input](https://asset.party/api/Sandbox.Input) API.
 
 ### Feature Showcase
 https://github.com/peter-r-g/Sbox-InputActionsGenerator/assets/11802285/5edcaf54-a225-42de-ac91-accdd36b8508
