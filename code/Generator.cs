@@ -76,7 +76,7 @@ internal static class Generator
 				NeedGenerating.Enqueue( project );
 			}
 
-			var watcher = new FileSystemWatcher( project.GetRootPath(), ".addon" )
+			var watcher = new FileSystemWatcher( project.GetRootPath(), ".sbproj" )
 			{
 				EnableRaisingEvents = true,
 				NotifyFilter = NotifyFilters.LastWrite
