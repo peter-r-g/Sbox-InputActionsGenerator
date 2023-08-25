@@ -221,7 +221,7 @@ internal static class Generator
 				propertyName = '_' + propertyName;
 
 			await writer.WriteAsync( $"public static InputActionData {propertyName} {{ get; }} = new" );
-			await writer.WriteLineAsync( $"( \"{action.Name}\", \"{action.GroupName}\", \"{action.KeyboardCode}\", {nameof( Gamepad )}.{nameof( Gamepad.Code )}.{action.GamepadCode} );" );
+			await writer.WriteLineAsync( $"( \"{action.Name}\", \"{action.GroupName}\", \"{action.KeyboardCode}\", {nameof( GamepadCode )}.{action.GamepadCode} );" );
 		}
 
 		writer.Indent--;
@@ -267,18 +267,18 @@ internal static class Generator
 }
 
 /// <summary>
-/// A <see cref="JsonConverter"/> for the <see cref="Gamepad.Code"/> enum.
+/// A <see cref="JsonConverter"/> for the <see cref="GamepadCode"/> enum.
 /// </summary>
-internal sealed class CodeConverter : JsonConverter<Gamepad.Code>
+internal sealed class CodeConverter : JsonConverter<GamepadCode>
 {
 	/// <inheritdoc/>
-	public override Gamepad.Code Read( ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options )
+	public override GamepadCode Read( ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options )
 	{
-		return Enum.Parse<Gamepad.Code>( reader.GetString()! );
+		return Enum.Parse<GamepadCode>( reader.GetString()! );
 	}
 
 	/// <inheritdoc/>
-	public override void Write( Utf8JsonWriter writer, Gamepad.Code value, JsonSerializerOptions options )
+	public override void Write( Utf8JsonWriter writer, GamepadCode value, JsonSerializerOptions options )
 	{
 		writer.WriteStringValue( value.ToString() );
 	}
