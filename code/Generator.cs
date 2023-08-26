@@ -237,11 +237,11 @@ internal static class Generator
 		await writer.WriteLineAsync( "public string Name { get; }" );
 		await writer.WriteLineAsync( "public string GroupName { get; }" );
 		await writer.WriteLineAsync( "public string KeyboardCode { get; }" );
-		await writer.WriteLineAsync( "public Gamepad.Code GamepadCode { get; }" );
+		await writer.WriteLineAsync( $"public {nameof( GamepadCode )} GamepadCode {{ get; }}" );
 		await writer.WriteLineAsync();
 
 		// Constructor.
-		await writer.WriteLineAsync( "public InputActionData( string name, string groupName, string keyboardCode, Gamepad.Code gamepadCode )" );
+		await writer.WriteLineAsync( $"public InputActionData( string name, string groupName, string keyboardCode, {nameof( GamepadCode )} gamepadCode )" );
 		await writer.WriteLineAsync( '{' );
 		writer.Indent++;
 
