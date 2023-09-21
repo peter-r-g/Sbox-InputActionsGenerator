@@ -50,7 +50,7 @@ internal static class Generator
 	[EditorEvent.Frame]
 	private static void MonitorProjects()
 	{
-		foreach ( var project in Utility.Projects.GetAll() )
+		foreach ( var project in EditorUtility.Projects.GetAll() )
 		{
 			if ( project.Package.PackageType != Package.Type.Gamemode )
 				continue;
@@ -100,7 +100,7 @@ internal static class Generator
 	private static void CleanWatchers()
 	{
 		var stillExists = new List<LocalProject>();
-		foreach ( var project in Utility.Projects.GetAll() )
+		foreach ( var project in EditorUtility.Projects.GetAll() )
 			stillExists.Add( project );
 
 		var projectsToRemove = new Stack<LocalProject>();
