@@ -7,12 +7,12 @@ namespace InputActionsGenerator;
 /// <summary>
 /// A notice for when code is being generated.
 /// </summary>
-internal sealed class GeneratingNotice : NoticeWidget
+internal sealed class GeneratingNotice : ToastWidget
 {
 	/// <summary>
 	/// The project that is having code generated.
 	/// </summary>
-	internal LocalProject Project { get; }
+	internal Project Project { get; }
 	/// <summary>
 	/// The current stage of the generation process.
 	/// </summary>
@@ -22,14 +22,13 @@ internal sealed class GeneratingNotice : NoticeWidget
 	/// </summary>
 	internal GenerationError Error { get; set; } = GenerationError.None;
 
-	internal GeneratingNotice( LocalProject project )
+	internal GeneratingNotice( Project project )
 	{
 		Position = 10;
 		Project = project;
 		Reset();
 	}
 
-	/// <inheritdoc/>
 	public override void Reset()
 	{
 		base.Reset();
@@ -61,11 +60,11 @@ internal sealed class GeneratingNotice : NoticeWidget
 			Title = "Generation failed for " + Project.Package.Title;
 			Subtitle = Error switch
 			{
-				GenerationError.NoInputSettings => "Failed to find input settings in .addon file",
+				GenerationError.NoInputSettings => "Failed to find input settings in Input.config file",
 				_ => throw new UnreachableException()
 			};
 
-			NoticeManager.Remove( this, 5 );
+			ToastManager.Remove( this, 5 );
 			return;
 		}
 
@@ -89,7 +88,7 @@ internal sealed class GeneratingNotice : NoticeWidget
 			Title = "Generation completed for " + Project.Package.Title;
 			Subtitle = string.Empty;
 
-			NoticeManager.Remove( this );
+			ToastManager.Remove( this );
 		}
 	}
 }

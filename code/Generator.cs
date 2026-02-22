@@ -17,6 +17,9 @@ namespace InputActionsGenerator;
 /// </summary>
 internal static class Generator
 {
+	private const string ProjectSettingsDirectory = "ProjectSettings";
+	private const string ConfigFileName = "Input.config";
+
 	/// <summary>
 	/// The options to give to the <see cref="InputAction"/> deserialize calls.
 	/// </summary>
@@ -38,11 +41,11 @@ internal static class Generator
 	/// <summary>
 	/// A queue for all of the projects that need their code re-generating.
 	/// </summary>
-	private static ConcurrentQueue<LocalProject> NeedGenerating { get; } = new();
+	private static ConcurrentQueue<Project> NeedGenerating { get; } = new();
 	/// <summary>
 	/// A dictionary containing all of the projects with file system watchers enabled.
 	/// </summary>
-	private static Dictionary<LocalProject, FileSystemWatcher> Watchers { get; } = new();
+	private static Dictionary<Project, FileSystemWatcher> Watchers { get; } = new();
 
 	/// <summary>
 	/// Checks all projects that need generating or are missing their file system watchers.
@@ -52,14 +55,18 @@ internal static class Generator
 	{
 		foreach ( var project in EditorUtility.Projects.GetAll() )
 		{
-			if ( project.Package.PackageType != Package.Type.Gamemode )
+			if ( project.Package.TypeName != "game" )
+				continue;
+
+			var configDirectory = Path.Combine( project.GetRootPath(), ProjectSettingsDirectory );
+			if ( !File.Exists( Path.Combine( configDirectory, ConfigFileName ) ) )
 				continue;
 
 			// In the event the root path changes but the project stays around. Update the path.
 			if ( Watchers.TryGetValue( project, out var foundWatcher ) )
 			{
-				if ( foundWatcher.Path != project.GetRootPath() )
-					foundWatcher.Path = project.GetRootPath();
+				if ( foundWatcher.Path != configDirectory )
+					foundWatcher.Path = configDirectory;
 
 				continue;
 			}
@@ -76,7 +83,7 @@ internal static class Generator
 				NeedGenerating.Enqueue( project );
 			}
 
-			var watcher = new FileSystemWatcher( project.GetRootPath(), ".sbproj" )
+			var watcher = new FileSystemWatcher( Path.GetDirectoryName( configDirectory )!, ConfigFileName )
 			{
 				EnableRaisingEvents = true,
 				NotifyFilter = NotifyFilters.LastWrite
@@ -99,11 +106,11 @@ internal static class Generator
 	[Event( "localaddons.changed" )]
 	private static void CleanWatchers()
 	{
-		var stillExists = new List<LocalProject>();
+		var stillExists = new List<Project>();
 		foreach ( var project in EditorUtility.Projects.GetAll() )
 			stillExists.Add( project );
 
-		var projectsToRemove = new Stack<LocalProject>();
+		var projectsToRemove = new Stack<Project>();
 		foreach ( var (project, watcher) in Watchers.Where( pair => !stillExists.Contains( pair.Key ) ) )
 			projectsToRemove.Push( project );
 
@@ -111,7 +118,7 @@ internal static class Generator
 		{
 			Watchers[project].Dispose();
 			Watchers.Remove( project );
-		}	
+		}
 	}
 
 	/// <summary>
@@ -120,57 +127,25 @@ internal static class Generator
 	/// <param name="project">The project to generate the class for.</param>
 	/// <returns>A task that represents the asynchronous operation.</returns>
 	/// <exception cref="ArgumentException">Thrown when given a project that cannot contain input actions.</exception>
-	private static async Task GenerateForAsync( LocalProject project )
+	private static async Task GenerateForAsync( Project project )
 	{
-		if ( project.Package.PackageType != Package.Type.Gamemode )
-			throw new ArgumentException( $"The package type {project.Package.PackageType} cannot have input actions", nameof( project ) );
+		if ( project.Package.TypeName != "game" )
+			throw new ArgumentException( $"The package type {project.Package.TypeName} cannot have input actions", nameof( project ) );
 
 		var notice = new GeneratingNotice( project );
 
-		if ( !project.Config.TryGetMeta<JsonElement>( "InputSettings", out var element ) )
-		{
-			notice.Error = GenerationError.NoInputSettings;
-			return;
-		}
-
-		if ( !element.TryGetProperty( "Actions", out var actionsElement ) )
-		{
-			notice.Error = GenerationError.NoInputSettings;
-			return;
-		}
-
-		if ( actionsElement.ValueKind != JsonValueKind.Array )
-		{
-			notice.Error = GenerationError.NoInputSettings;
-			return;
-		}
-
-		notice.CurrentStage = GenerationStage.ParsingActions;
-		var actions = new List<InputAction>();
-		try
-		{
-			foreach ( var arrayElement in actionsElement.EnumerateArray() )
-			{
-				if ( arrayElement.Deserialize<InputAction>( JsonOptions ) is not InputAction action )
-					continue;
-
-				actions.Add( action );
-			}
-		}
-		catch ( Exception )
-		{
-			notice.Error = GenerationError.ParseActionsFailed;
-			return;
-		}
+		var configDirectory = Path.Combine( project.GetRootPath(), ProjectSettingsDirectory );
+		var inputSettings = new InputSettings();
+		inputSettings.Deserialize( File.ReadAllText( Path.Combine( configDirectory, ConfigFileName ) ) );
 
 		notice.CurrentStage = GenerationStage.FindingRootNamespace;
 		var rootNamespace = "Sandbox";
-		if ( !project.Config.TryGetMeta<CompilerSettings>( "Compiler", out var compilerSettings ) && compilerSettings is not null )
+		if ( project.Config.TryGetMeta<Compiler.Configuration>( "Compiler", out var compilerSettings ) )
 			rootNamespace = compilerSettings.RootNamespace;
 
+		notice.CurrentStage = GenerationStage.OpeningGeneratedFile;
 		var outputDirectory = Path.Combine( project.GetCodePath(), "Generated" );
 		var outputPath = Path.Combine( outputDirectory, "InputActions.generated.cs" );
-		notice.CurrentStage = GenerationStage.OpeningGeneratedFile;
 
 		Stream stream;
 		try
@@ -211,7 +186,7 @@ internal static class Generator
 		writer.Indent++;
 
 		// Generate each action data.
-		foreach ( var action in actions )
+		foreach ( var action in inputSettings.Actions )
 		{
 			var propertyName = action.Name;
 			if ( propertyName.Length == 0 )
