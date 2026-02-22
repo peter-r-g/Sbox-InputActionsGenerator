@@ -13,8 +13,5 @@ This data is implicitly converted to its name so that it can be used seamlessly 
 ### Feature Showcase
 https://github.com/peter-r-g/Sbox-InputActionsGenerator/assets/11802285/5edcaf54-a225-42de-ac91-accdd36b8508
 
-## Installation
-You can install the tool by downloading this repo or using [Xezno](https://github.com/xezno)s [Tool Manager](https://github.com/xezno/sbox-tools-manager)
-
 ## License
 Distributed under the MIT License. See the [license](https://github.com/peter-r-g/Sbox-InputActionsGenerator/blob/master/LICENSE.md) for more information.
